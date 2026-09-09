@@ -8,12 +8,18 @@ from .edges import (
     snap_edge,
 )
 from .geometry import pad_box, roi_frac_to_px, well_grid_fracs
-from .grid import fit_grid_axis, fit_grid_transform, place_wells
+from .grid import (
+    LABEL_SCHEMES,
+    fit_grid_axis,
+    fit_grid_transform,
+    place_wells,
+    well_number,
+)
 from .refine import refine_well
 from .visualization import draw_overlay, render_overlay_matplotlib
 from .well import Well
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "PlateDetector",
@@ -23,6 +29,8 @@ __all__ = [
     "render_overlay_matplotlib",
     "refine_well",
     "place_wells",
+    "well_number",
+    "LABEL_SCHEMES",
     "fit_grid_axis",
     "fit_grid_transform",
     "detect_plate_rect_edges",

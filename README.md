@@ -62,6 +62,26 @@ cv2.imwrite("grid_preview.png", cv2.cvtColor(overlay, cv2.COLOR_RGB2BGR))
 
 ---
 
+## Well Labeling Order
+
+Wells are numbered within each plate in `label_scheme` traversal order and returned
+in ascending label order:
+
+| `label_scheme` | 3x2 plate layout | numbering |
+|---|---|---|
+| `"row-major"` (default) | `A1 A2` / `A3 A4` / `A5 A6` | across each row first |
+| `"column-major"` | `A1 A4` / `A2 A5` / `A3 A6` | down each column first |
+
+```python
+detector = wellcrop.PlateDetector(label_scheme="column-major")
+```
+
+A scheme can also be set per plate with a `"label_scheme"` key on the ROI hint.
+`Well.row` / `Well.col` always carry the canonical 0-indexed grid position,
+independent of the labeling.
+
+---
+
 ## How it Works
 
 1. **ROI-Scoped Search:** Expands the user's initial approximate plate bounding box by `margin_frac` to absorb scanner placement shift.

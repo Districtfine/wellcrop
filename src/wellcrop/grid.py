@@ -7,6 +7,32 @@ from .geometry import well_grid_fracs
 from .refine import refine_well
 
 
+LABEL_SCHEMES = ("row-major", "column-major")
+"""Well numbering orders: "row-major" numbers across each row first (the
+historical default); "column-major" numbers down each column first, so on a
+3x2 plate the left column is A1-A3 and the right column A4-A6."""
+
+
+def validate_label_scheme(scheme: str) -> None:
+    """Raise ValueError unless scheme is one of LABEL_SCHEMES."""
+    if scheme not in LABEL_SCHEMES:
+        raise ValueError(
+            f"label_scheme must be one of {' | '.join(LABEL_SCHEMES)}, got {scheme!r}"
+        )
+
+
+def well_number(row: int, col: int, rows: int, cols: int, scheme: str) -> int:
+    """1-based linear well number for grid cell (row, col) under a scheme.
+
+    A scheme is a grid traversal order: wells are numbered in the order the
+    scheme visits them, and place_wells returns them in ascending label order.
+    """
+    validate_label_scheme(scheme)
+    if scheme == "row-major":
+        return row * cols + col + 1
+    return col * rows + row + 1
+
+
 def fit_grid_axis(
     locked_indices: List[int],
     locked_centers: List[float],
@@ -98,6 +124,7 @@ def place_wells(
     rows: int,
     cols: int,
     plate_letter: str = "A",
+    label_scheme: str = "row-major",
     refine: bool = True,
     radius_pitch_frac: float = 0.45,
     lock_trust_frac: float = 0.25,
@@ -107,6 +134,11 @@ def place_wells(
     hough_param2: int = 30,
 ) -> List[Tuple[int, int, int, str, int, int, bool]]:
     """Place wells on a fitted rows x cols grid, anchored by whichever wells lock onto a real ring.
+
+    Wells are numbered 1..rows*cols in label_scheme traversal order and returned in
+    ascending label order — "row-major" numbers across each row first (the analytic
+    loop order), "column-major" numbers down each column first (on a 3x2 plate the
+    left column is A1-A3, the right one A4-A6).
 
     Returns:
         List of tuples: (center_x, center_y, radius, label, row_idx, col_idx, locked)
@@ -123,12 +155,14 @@ def place_wells(
             analytic_centers.append(
                 (plate_x + plate_width * x_frac, plate_y + plate_height * y_frac)
             )
-            labels.append(f"{plate_letter}{row_index * cols + col_index + 1}")
+            labels.append(
+                f"{plate_letter}{well_number(row_index, col_index, rows, cols, label_scheme)}"
+            )
             row_indices.append(row_index)
             col_indices.append(col_index)
 
     if not refine:
-        return [
+        results = [
             (
                 int(center_x),
                 int(center_y),
@@ -142,6 +176,10 @@ def place_wells(
                 analytic_centers, labels, row_indices, col_indices
             )
         ]
+        results.sort(
+            key=lambda placed: well_number(placed[4], placed[5], rows, cols, label_scheme)
+        )
+        return results
 
     found_by_index = {}
     locked_points, locked_radii, locked_rows, locked_cols = [], [], [], []
@@ -250,4 +288,7 @@ def place_wells(
             )
         )
 
+    results.sort(
+        key=lambda placed: well_number(placed[4], placed[5], rows, cols, label_scheme)
+    )
     return results

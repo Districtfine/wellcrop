@@ -6,7 +6,7 @@ import numpy as np
 
 from .edges import detect_plate_rect_edges, reconcile_vertical_borders
 from .geometry import pad_box, roi_frac_to_px
-from .grid import place_wells
+from .grid import place_wells, validate_label_scheme
 from .well import Well
 
 
@@ -16,6 +16,9 @@ class PlateDetector:
     Parameters:
         rows: Default number of well rows per plate (e.g. 3 for 6-well, 4 for 24-well).
         cols: Default number of well cols per plate (e.g. 2 for 6-well, 6 for 24-well).
+        label_scheme: Well numbering order — "row-major" numbers across rows first
+            (A1 A2 / A3 A4 / A5 A6 on a 3x2 plate; historical default), "column-major"
+            numbers down each column first (left column A1-A3, right column A4-A6).
         margin_frac: Placement shift search tolerance around drawn ROI boxes (default: 0.20).
         clahe_clip: Contrast enhancement limit for faint plastic edges (default: 3.0).
         refine_wells: Snap analytic well centers to physical rings via Hough (default: True).
@@ -33,6 +36,7 @@ class PlateDetector:
         self,
         rows: Optional[int] = None,
         cols: Optional[int] = None,
+        label_scheme: str = "row-major",
         margin_frac: float = 0.20,
         clahe_clip: float = 3.0,
         refine_wells: bool = True,
@@ -47,6 +51,8 @@ class PlateDetector:
     ):
         self.rows = rows
         self.cols = cols
+        validate_label_scheme(label_scheme)
+        self.label_scheme = label_scheme
         self.margin_frac = margin_frac
         self.clahe_clip = clahe_clip
         self.refine_wells = refine_wells
@@ -120,6 +126,7 @@ class PlateDetector:
             plate_letter = roi.get("letter") or chr(ord("A") + roi_index)
             rows = roi.get("rows") or self.rows
             cols = roi.get("cols") or self.cols
+            label_scheme = roi.get("label_scheme") or self.label_scheme
 
             if rows is None or cols is None:
                 raise ValueError(
@@ -132,6 +139,7 @@ class PlateDetector:
                 rows=rows,
                 cols=cols,
                 plate_letter=plate_letter,
+                label_scheme=label_scheme,
                 refine=self.refine_wells,
                 radius_pitch_frac=self.radius_pitch_frac,
                 lock_trust_frac=self.lock_trust_frac,
@@ -199,6 +207,7 @@ def detect_wells_from_rois(
     clahe_clip: float = 3.0,
     refine: bool = True,
     return_boxes: bool = False,
+    label_scheme: str = "row-major",
 ) -> Union[
     List[Tuple[int, int, int, str]],
     Tuple[List[Tuple[int, int, int, str]], List[Tuple[int, int, int, int]]],
@@ -212,6 +221,7 @@ def detect_wells_from_rois(
         margin_frac=margin_frac,
         clahe_clip=clahe_clip,
         refine_wells=refine,
+        label_scheme=label_scheme,
     )
     res = detector.detect(image_rgb, roi_hints, return_boxes=return_boxes)
     if return_boxes:
